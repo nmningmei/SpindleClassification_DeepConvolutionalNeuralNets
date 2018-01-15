@@ -50,7 +50,8 @@ def get_events(fif,f,channelList = None):
     jitter_spindle_onset = np.array(jitter_spindle_onset)
     nonspindle_time_pairs = []
     nonspindle_onset = []
-    for ii, onset in enumerate(jitter_spindle_onset):
+    """psuedo implementation of coupon collector's problem"""
+    for ii, onset in tqdm(enumerate(jitter_spindle_onset),desc='non spindle sampling'):
         if (ii > 0) and (jitter_spindle_onset[ii-1] - onset > 10) and (((onset - 5.5) > (300)) or ((onset + 8.5) < (raw.times[-1]-100))):
             """
             sample spindles and sample non spindle around a spindle
@@ -64,12 +65,12 @@ def get_events(fif,f,channelList = None):
             current_time_pairs.append([onset - 8.5, onset - 5.5])
             nonspindle_onset.append(onset - 8.5)
         else:
-            print('start a new non spindle sampling')
+            #print('start a new non spindle sampling')
             for counter in range(int(1e5)):
                 new_sample_ = np.random.choice(raw.times[300000:-100000],size=1)[0]
                 new_sample  = np.array( [new_sample_, new_sample_+3])
                 if sum([eegPinelineDesign.getOverlap(s_interval,new_sample) for s_interval in current_time_pairs]) != 0:
-                    print('find one',new_sample_,'sample %d times'%counter)
+                    #print('find one',new_sample_,'sample %d times'%counter)
                     current_time_pairs.append(new_sample)
                     nonspindle_onset.append(new_sample_)
                     nonspindle_time_pairs.append([new_sample_, new_sample_+3])
@@ -91,14 +92,17 @@ def get_events(fif,f,channelList = None):
     nonspindle_events[:,-1] = 0
     
     events = np.concatenate([spindle_events,nonspindle_events],axis=0)
+    print('\nsampled events:',events.shape)
     # drop duplicates: oversamping
+    print('drop duplicates')
     events_ = pd.DataFrame(events,columns=['onset','e','c']) # names of the columns don't matter
-    events_ = events_.drop_duplicates()
+    events_ = events_.drop_duplicates('onset')
     events = events_.values.astype(int)
     
     epochs_ = mne.Epochs(raw,events,event_id=event_id,tmin=-0.1,tmax=2.9,preload=True,detrend=1,baseline=(-0.1,0))
+    print('down sampling')
     epochs_.resample(64)
-    
+    print('computing power spectrogram')
     freqs = np.arange(6,22,1)
     n_cycles = freqs / 2.
 #    time_bandwidth = 2.0  # Least possible frequency-smoothing (1 taper)
