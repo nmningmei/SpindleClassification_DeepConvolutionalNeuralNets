@@ -29,7 +29,7 @@ def get_events(fif,f,channelList = None):
 
     raw = mne.io.read_raw_fif(fif,preload=True)
     anno = pd.read_csv(f)
-    raw.filter(6,22) # make frequency axis 16 dimensions
+    raw.filter(6,22,fir_design='firwin') # make frequency axis 16 dimensions
     
     if channelList == None:
         channelList = ['F3','F4','C3','C4','O1','O2']
@@ -41,9 +41,11 @@ def get_events(fif,f,channelList = None):
     record_jitters = []
     current_time_pairs = []
     jitter_spindle_onset = []
+    record_jitters_code = []
     for ii,row in spindles.iterrows():
-        for jitter_ in [0,0.5,1.,1.5,2.]:
+        for jj,jitter_ in enumerate([-0.5,-0.25,0,0.25,0.5]):
             record_jitters.append(jitter_)
+            record_jitters_code.append(jj)
             jitter_onset = row['Onset'] + jitter_
             jitter_spindle_onset.append(jitter_onset)
             start_,stop_ = jitter_onset - 0.5, jitter_onset + 2.5
@@ -63,11 +65,13 @@ def get_events(fif,f,channelList = None):
             current_time_pairs.append([onset - 8.5, onset - 5.5])
             nonspindle_onset.append(onset - 8.5)
             record_jitters.append(0)
+            record_jitters_code.append(9)
         elif (ii == 0) and (((onset - 5.5) > (300)) or ((onset + 8.5) < (raw.times[-1]-100))):
             nonspindle_time_pairs.append([onset - 8.5, onset - 5.5])
             current_time_pairs.append([onset - 8.5, onset - 5.5])
             nonspindle_onset.append(onset - 8.5)
             record_jitters.append(0)
+            record_jitters_code.append(9)
         else:
             #print('start a new non spindle sampling')
             for counter in range(int(1e5)):
@@ -79,13 +83,19 @@ def get_events(fif,f,channelList = None):
                     nonspindle_onset.append(new_sample_)
                     nonspindle_time_pairs.append([new_sample_, new_sample_+3])
                     record_jitters.append(0)
+                    record_jitters_code.append(9)
                     break
             else: # for - else loop!!!!!!
                 print('seriously?!, stop at 10,0000 times of samping')
                 break
     spindle_events = np.zeros((len(spindle_intervals),3))
     spindle_events[:,0] = spindle_intervals[:,0] + 0.1 # move forward for baselining
-    event_id = {'spindle':1,'non spindle':0}
+    event_id = {'spindle jitter -0.5':0,
+                'spindle jitter -0.25':1,
+                'spindle jitter 0':2,
+                'spindle jitter 0.25':3,
+                'spindle jitter 0.5':4,
+                'non spindle':9}
     spindle_events[:,0] = spindle_events[:,0] * raw.info['sfreq'] # convert s to ms
     spindle_events = spindle_events.astype(int)
     spindle_events[:,-1] = 1
@@ -97,14 +107,16 @@ def get_events(fif,f,channelList = None):
     nonspindle_events[:,-1] = 0
     
     events = np.concatenate([spindle_events,nonspindle_events],axis=0)
+    events[:,-1]=record_jitters_code
     print('\nsampled events:',events.shape)
     # drop duplicates: oversamping
     print('drop duplicates')
     events_ = pd.DataFrame(events,columns=['onset','e','c']) # names of the columns don't matter
+    events_['jitter']=record_jitters
     events_ = events_.drop_duplicates('onset')
-    events = events_.values.astype(int)
+    events = events_[['onset','e','c']].values.astype(int)
     
-    epochs_ = mne.Epochs(raw,events,event_id=event_id,tmin=-0.1,tmax=2.9,preload=True,detrend=1,baseline=(-0.1,0))
+    epochs_ = mne.Epochs(raw,events,event_id=event_id,tmin=0,tmax=3.,preload=True,detrend=1,baseline=(None,None))
     print('down sampling')
     epochs_.resample(64)
     print('computing power spectrogram')
@@ -112,7 +124,7 @@ def get_events(fif,f,channelList = None):
     n_cycles = freqs / 2.
 #    time_bandwidth = 2.0  # Least possible frequency-smoothing (1 taper)
     power = tfr_morlet(epochs_,freqs,n_cycles=n_cycles,return_itc=False,average=False,)
-    events_['jitter']=record_jitters
+    
     power.info['event'] = events_
     del raw
     return power,epochs_
