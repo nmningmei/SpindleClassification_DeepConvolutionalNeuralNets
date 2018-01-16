@@ -38,10 +38,12 @@ def get_events(fif,f,channelList = None):
     raw.pick_channels(channelList)
     raw.info.normalize_proj()
     spindles = anno[anno.Annotation.apply(spindle)]
+    record_jitters = []
     current_time_pairs = []
     jitter_spindle_onset = []
     for ii,row in spindles.iterrows():
         for jitter_ in [0,0.5,1.,1.5,2.]:
+            record_jitters.append(jitter_)
             jitter_onset = row['Onset'] + jitter_
             jitter_spindle_onset.append(jitter_onset)
             start_,stop_ = jitter_onset - 0.5, jitter_onset + 2.5
@@ -60,10 +62,12 @@ def get_events(fif,f,channelList = None):
             nonspindle_time_pairs.append([onset - 8.5, onset - 5.5])
             current_time_pairs.append([onset - 8.5, onset - 5.5])
             nonspindle_onset.append(onset - 8.5)
+            record_jitters.append(0)
         elif (ii == 0) and (((onset - 5.5) > (300)) or ((onset + 8.5) < (raw.times[-1]-100))):
             nonspindle_time_pairs.append([onset - 8.5, onset - 5.5])
             current_time_pairs.append([onset - 8.5, onset - 5.5])
             nonspindle_onset.append(onset - 8.5)
+            record_jitters.append(0)
         else:
             #print('start a new non spindle sampling')
             for counter in range(int(1e5)):
@@ -74,6 +78,7 @@ def get_events(fif,f,channelList = None):
                     current_time_pairs.append(new_sample)
                     nonspindle_onset.append(new_sample_)
                     nonspindle_time_pairs.append([new_sample_, new_sample_+3])
+                    record_jitters.append(0)
                     break
             else: # for - else loop!!!!!!
                 print('seriously?!, stop at 10,0000 times of samping')
@@ -107,6 +112,7 @@ def get_events(fif,f,channelList = None):
     n_cycles = freqs / 2.
 #    time_bandwidth = 2.0  # Least possible frequency-smoothing (1 taper)
     power = tfr_morlet(epochs_,freqs,n_cycles=n_cycles,return_itc=False,average=False,)
+    events_['jitter']=record_jitters
     power.info['event'] = events_
     del raw
     return power,epochs_

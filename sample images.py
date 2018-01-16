@@ -31,14 +31,20 @@ for e in os.listdir(working_dir):
         tfcs = tfcs[0]
         print(e,tfcs.info['event'].values[:,-1].mean(),len(tfcs.info['event'].values[:,-1]),)
         data = tfcs.data
-        
+        ch_names = tfcs.info['ch_names']
         # scale the data to between 0 and 1
         data_s = (data - data.min(0)) / (data.max(0) - data.min(0))
         
-        for ii in tqdm(range(data_s.shape[0],desc='within subject%s,day%s'%(sub,day))):
+        for ii in tqdm(range(data_s.shape[0]),desc='within subject%s,day%s'%(sub,day)):
             plt.close('all')
             fig,axes = plt.subplots(figsize=(16,8),nrows=4,ncols=8)
-            for jj,ax in enu
+            for jj,(ax,ch_) in enumerate(zip(axes.flatten(),ch_names)):
+                im = ax.imshow(data_s[ii,jj,:,:],origin='lower',aspect='auto',extent=[0,3000,6,22],vmin=0,vmax=.5)
+                ax.set(xlabel='',ylabel='',title=ch_)
+            instance = title[tfcs.info['event'].values[:,-1][ii]]
+            title_ = 'sub%s,day%s,instance%d,%s'%(sub,day,ii,instance)
+            fig.suptitle(title_)
+            fig.tight_layout(pad=2.)
         
         
         
