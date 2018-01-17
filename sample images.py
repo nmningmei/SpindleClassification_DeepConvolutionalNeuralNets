@@ -25,7 +25,7 @@ if not os.path.exists(saving_dir):
     os.mkdir(saving_dir)
 title = {9:'non spindle',0:'spindle',1:'spindle',2:'spindle',3:'spindle',4:'spindle'}
 count = 0
-for e in os.listdir(working_dir)[5:]:
+for e in os.listdir(working_dir):
     if ('-tfr.h5' in e):
         sub,day,_ = re.findall('\d+',e)
         tfcs = mne.time_frequency.read_tfrs(working_dir+e)
