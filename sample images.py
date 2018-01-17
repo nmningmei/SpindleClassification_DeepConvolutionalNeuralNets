@@ -25,12 +25,12 @@ if not os.path.exists(saving_dir):
     os.mkdir(saving_dir)
 title = {9:'non spindle',0:'spindle',1:'spindle',2:'spindle',3:'spindle',4:'spindle'}
 count = 0
-for e in os.listdir(working_dir):
+for e in os.listdir(working_dir)[5:]:
     if ('-tfr.h5' in e):
         sub,day,_ = re.findall('\d+',e)
         tfcs = mne.time_frequency.read_tfrs(working_dir+e)
         tfcs = tfcs[0]
-        print(e,tfcs.info['event'].values[:,-1].mean(),len(tfcs.info['event'].values[:,-2]),)
+        print(e,tfcs.info['event'].values[:,-2].mean(),len(tfcs.info['event'].values[:,-2]),)
         data = tfcs.data
         ch_names = tfcs.info['ch_names']
         # scale the data to between 0 and 1
@@ -49,7 +49,7 @@ for e in os.listdir(working_dir):
             fig.suptitle(title_)
             fig.tight_layout(pad=2.)
             fig.savefig(saving_dir + '%s_%s_%s_%d.png'%(sub,day,instance,ii))
-            plt.show()
+#            plt.show()
             plt.close('all')
         del tfcs,data,data_s
         
