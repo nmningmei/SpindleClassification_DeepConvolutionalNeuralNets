@@ -15,6 +15,7 @@ import pickle
 from keras.utils import np_utils
 import matplotlib.pyplot as plt
 from glob import glob
+from random import shuffle
 
 # model related
 from keras.layers import Input, Conv2D, Conv2DTranspose, MaxPooling2D, UpSampling2D,Dropout,BatchNormalization
@@ -139,7 +140,7 @@ if os.path.exists(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(con
 for ii in range(breaks):
     labels = []
     all_objects = glob(os.path.join(training_dir,'*.p'))
-    all_objects_idx = np.arange(len(all_objects))
+    shuffle(all_objects)
     groups = np.array_split(all_objects,15)
     for jj in range(through):# going through the training data 5 times
 #        step_idx = np.random.choice(np.arange(10),size=10,replace=False)
