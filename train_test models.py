@@ -116,19 +116,20 @@ print('dense 7 shape:',drop7.shape)
 
 model_auto = Model(inputs = inputs,outputs=dens7)
 # put everything together and make a model graph
-model_auto.compile(optimizer=keras.optimizers.SGD(),loss=keras.losses.mse,metrics=['accuracy','categorical_accuracy'])
+model_auto.compile(optimizer=keras.optimizers.SGD(),loss=keras.losses.binary_crossentropy,metrics=['categorical_accuracy'])
 
 
 """classification"""
 breaks = 500 # in each break, we will look at the data and plot the validation results
 batch_size = 100 # batch training size, memory reason
 through = 5 # how many times we want to go through the training data
-file_path = saving_dir_weight+'weights.2D_classification.best.hdf5' # define the path for saving the model
+conditions_ = 'random inputs'
+file_path = saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_) # define the path for saving the model
 checkPoint = ModelCheckpoint(file_path,monitor='val_loss',save_best_only=True,mode='min',period=1,verbose=1)
 callback_list = [checkPoint]
 temp_results = [] # temporary results saving list, will convert to pandas dat frame
-if os.path.exists(saving_dir_weight+'weights.2D_classification.best.hdf5'):# if the model is trained, load the trained model
-    model_auto.load_weights(saving_dir_weight+'weights.2D_classification.best.hdf5')
+if os.path.exists(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_)):# if the model is trained, load the trained model
+    model_auto.load_weights(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_))
 
 #### training and validating ########
 for ii in range(breaks):
@@ -159,7 +160,7 @@ for ii in range(breaks):
                         validation_data=(X_validation,y_validation),shuffle=True,callbacks=callback_list)
     labels = np.concatenate(labels,axis=0)
     # load the best state to determine the hyperparameters: stopping point ---- testing data is left untouched
-    model_auto.load_weights(saving_dir_weight+'weights.2D_classification.best.hdf5')
+    model_auto.load_weights(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_))
     X_predict = model_auto.predict(X_validation)[:,-1] > np.mean(labels[:,-1]) # no at 0.5 level
     X_predict_prob = model_auto.predict(X_validation)[:,-1]
     print(metrics.classification_report(y_validation[:,-1],X_predict))
@@ -180,10 +181,10 @@ for ii in range(breaks):
 #    print('mean similarity: %.4f +/- %.4f'%(np.mean(validation_measure),np.std(validation_measure)))
     temp_results.append([(ii+1)*50,AUC,sensitivity,selectivity])
     results_for_saving = pd.DataFrame(np.array(temp_results).reshape(-1,4),columns=['epochs','AUC','sensitivity','selectivity'])
-    if os.path.exists(saving_dir_weight + 'scores_classification.csv'):
-        temp_result_for_saving = pd.read_csv(saving_dir_weight + 'scores_classification.csv')
+    if os.path.exists(saving_dir_weight + 'scores_classification_%s.csv'%conditions_):
+        temp_result_for_saving = pd.read_csv(saving_dir_weight + 'scores_classification_%s.csv'%conditions_)
         results_for_saving = pd.concat([temp_result_for_saving,results_for_saving])
-    results_for_saving.to_csv(saving_dir_weight + 'scores_classification.csv',index=False)
+    results_for_saving.to_csv(saving_dir_weight + 'scores_classification_%s.csv'%conditions_,index=False)
 
 
 
