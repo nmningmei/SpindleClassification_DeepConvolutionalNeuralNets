@@ -128,7 +128,7 @@ model_auto.compile(optimizer=keras.optimizers.SGD(),loss=keras.losses.binary_cro
 breaks = 500 # in each break, we will look at the data and plot the validation results
 batch_size = 100 # batch training size, memory reason
 through = 5 # how many times we want to go through the training data
-conditions_ = 'random inputs'
+conditions_ = '_random inputs'
 file_path = saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_) # define the path for saving the model
 checkPoint = ModelCheckpoint(file_path,monitor='val_loss',save_best_only=True,mode='min',period=1,verbose=1)
 callback_list = [checkPoint]
@@ -204,6 +204,9 @@ group = glob(os.path.join(test_dir,'*.p'))
 temp = [pickle.load(open(f,'rb')) for f in group]
 X_test = [a for a,b in temp]
 X_test = np.array(X_test)
+X_test_max = X_test.max(0)
+X_test_min = X_test.min(0)
+X_test = (X_test - X_test_min) / (X_test_max - X_test_min)
 y_test = [b for a,b in temp]
 y_test = np.array(y_test)
 y_test = np_utils.to_categorical(y_test,2)
