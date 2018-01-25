@@ -14,6 +14,7 @@ import pandas as pd
 import pickle
 from keras.utils import np_utils
 import matplotlib.pyplot as plt
+from glob import glob
 
 # model related
 from keras.layers import Input, Conv2D, Conv2DTranspose, MaxPooling2D, UpSampling2D,Dropout,BatchNormalization
@@ -45,7 +46,15 @@ if not os.path.exists(saving_dir_weight):
 
 # load validation data
 validation_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\validation\\'
-
+group = glob(os.path.join(validation_dir,'*.p'))
+temp = [pickle.load(open(f,'rb')) for f in group]
+X_validation = [a for a,b in temp]
+X_validation = np.array(X_validation)
+y_validation = [b for a,b in temp]
+y_validation = np.array(y_validation)
+y_validation = np_utils.to_categorical(y_validation,2)
+# training directory
+training_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\training\\'
 
 #########################################################
 ############## covn autoencoder model ###################
@@ -124,11 +133,19 @@ if os.path.exists(saving_dir_weight+'weights.2D_classification.best.hdf5'):# if 
 #### training and validating ########
 for ii in range(breaks):
     labels = []
+    all_objects = glob(os.path.join(training_dir,'*.p'))
+    all_objects_idx = np.arange(len(all_objects))
+    groups = np.array_split(all_objects,15)
     for jj in range(through):# going through the training data 5 times
-        step_idx = np.random.choice(np.arange(10),size=10,replace=False)
-        for kk in step_idx: # going through 10 splitted training data
-            temp = pickle.load(open('D:\\NING - spindle\\Spindle_by_Graphical_Features\\data\\train\\train%d.p'%(kk),'rb'))
-            X_train_,y_train_ = temp
+#        step_idx = np.random.choice(np.arange(10),size=10,replace=False)
+        for group in groups: # going through 10 splitted training data
+            temp = [pickle.load(open(f,'rb')) for f in group]
+            X_train_ = [a for a,b in temp]
+            X_train_ = np.array(X_train_,dtype=np.float32)
+            y_train_ = [b for a,b in temp]
+            y_train_ = np.array(y_train_,dtype=np.float32)
+            y_train_ = np_utils.to_categorical(y_train_,2)
+
 	    # add random inputs because the previous model score random inputs as spindles with super high confidence
 	    # however, we never test/validate the model with any random inputs
             random_inputs = np.random.rand(X_train_.shape[0],32,16,192)
@@ -172,7 +189,13 @@ for ii in range(breaks):
 
 ### testing #####
 test_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\test'
-
+group = glob(os.path.join(test_dir,'*.p'))
+temp = [pickle.load(open(f,'rb')) for f in group]
+X_test = [a for a,b in temp]
+X_test = np.array(X_test)
+y_test = [b for a,b in temp]
+y_test = np.array(y_test)
+y_test = np_utils.to_categorical(y_test,2)
 X_predict_ = model_auto.predict(X_test)[:,-1] > 0.5
 X_predict_prob_ = model_auto.predict(X_test)[:,-1]
 print(metrics.classification_report(y_test[:,-1],X_predict_))
