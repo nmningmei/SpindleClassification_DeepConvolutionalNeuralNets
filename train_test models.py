@@ -128,7 +128,7 @@ model_auto.compile(optimizer=keras.optimizers.SGD(),loss=keras.losses.binary_cro
 breaks = 500 # in each break, we will look at the data and plot the validation results
 batch_size = 100 # batch training size, memory reason
 through = 5 # how many times we want to go through the training data
-conditions_ = '_random inputs'
+conditions_ = '_random inputs_random_selected'
 file_path = saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_) # define the path for saving the model
 checkPoint = ModelCheckpoint(file_path,monitor='val_loss',save_best_only=True,mode='min',period=1,verbose=1)
 callback_list = [checkPoint]
@@ -144,7 +144,7 @@ for ii in range(breaks):
     groups = np.array_split(all_objects,15)
     for jj in range(through):# going through the training data 5 times
 #        step_idx = np.random.choice(np.arange(10),size=10,replace=False)
-        for group in groups: # going through 10 splitted training data
+        for group in groups[np.random.choice(len(groups),size=len(groups),replace=False)]: # going through 10 splitted training data
             temp = [pickle.load(open(f,'rb')) for f in group]
             print('load training instances')
             X_train_ = [a for a,b in temp]
@@ -168,6 +168,9 @@ for ii in range(breaks):
             # train each small batch of the data 2 times, the order of the data is shuffled
             model_auto.fit(x=X_train_,y=y_train_,batch_size=batch_size,epochs=2,
                         validation_data=(X_validation,y_validation),shuffle=True,callbacks=callback_list)
+            if os.path.exists(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_)):# if the model is trained, load the trained model
+                model_auto.load_weights(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_))
+
     labels = np.concatenate(labels,axis=0)
     # load the best state to determine the hyperparameters: stopping point ---- testing data is left untouched
     model_auto.load_weights(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_))
