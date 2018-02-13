@@ -16,6 +16,7 @@ from keras.utils import np_utils
 import matplotlib.pyplot as plt
 from glob import glob
 from random import shuffle
+from tqdm import tqdm
 
 # model related
 from keras.layers import Input, Conv2D, Conv2DTranspose, MaxPooling2D, UpSampling2D,Dropout,BatchNormalization
@@ -205,17 +206,39 @@ for ii in range(breaks):
 ### testing #####
 test_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\test'
 group = glob(os.path.join(test_dir,'*.p'))
-temp = [pickle.load(open(f,'rb')) for f in group]
-X_test = [a for a,b in temp]
-X_test = np.array(X_test)
-X_test_max = X_test.max(0)
-X_test_min = X_test.min(0)
-X_test = (X_test - X_test_min) / (X_test_max - X_test_min)
-y_test = [b for a,b in temp]
-y_test = np.array(y_test)
-y_test = np_utils.to_categorical(y_test,2)
-X_predict_ = model_auto.predict(X_test)[:,-1] > 0.5
-X_predict_prob_ = model_auto.predict(X_test)[:,-1]
+shuffle(group)
+X_predict_prob_ = []
+y_test = []
+for ii,k in enumerate(np.array_split(group,7)):
+    k
+    X_test,y_test_ = [],[]
+    for f in tqdm(k,desc='split group %d'%ii):
+        a,b = pickle.load(open(f,'rb'))
+        X_test.append(a)
+        y_test_.append(b)
+    #temp = [pickle.load(open(f,'rb')) for f in group]
+    #X_test = [a for a,b in temp]
+    X_test = np.array(X_test)
+    X_test_max = X_test.max(0)
+    X_test_min = X_test.min(0)
+    X_test = (X_test - X_test_min) / (X_test_max - X_test_min)
+    #y_test = [b for a,b in temp]
+    y_test_ = np.array(y_test_)
+    y_test_ = np_utils.to_categorical(y_test_,2)
+    y_test.append(y_test_)
+    
+    #X_predict_ = model_auto.predict(X_test)[:,-1] > 0.5
+    print('start a prediction')
+    X_predict_prob__ = model_auto.predict(X_test)[:,-1]
+    X_predict_prob_.append(X_predict_prob__)
+    print('finish a prediction')
+X_predict_prob_ = np.concatenate(X_predict_prob_)
+y_test = np.concatenate(y_test)
+
+X_predict_ = X_predict_prob_ > 0.5
+
+pickle.dump([X_predict_prob_,X_predict_,y_test],open(saving_dir_weight+'predictions.p','wb'))
+X_predict_prob_,X_predict_,y_test = pickle.load(open(saving_dir_weight+'predictions.p','rb'))
 print(metrics.classification_report(y_test[:,-1],X_predict_))
 AUC = metrics.roc_auc_score(y_test[:,-1], X_predict_prob_)
 fpr,tpr,th = metrics.roc_curve(y_test[:,-1], X_predict_prob_,pos_label=1)
