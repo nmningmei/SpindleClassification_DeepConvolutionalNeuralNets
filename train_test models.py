@@ -128,7 +128,8 @@ model_auto.compile(optimizer=keras.optimizers.SGD(),loss=keras.losses.binary_cro
 breaks = 500 # in each break, we will look at the data and plot the validation results
 batch_size = 100 # batch training size, memory reason
 through = 5 # how many times we want to go through the training data
-conditions_ = '_random inputs_random_selected'
+#conditions_ = '_random inputs_random_selected'
+conditions_ = '_random inputs'
 file_path = saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_) # define the path for saving the model
 checkPoint = ModelCheckpoint(file_path,monitor='val_loss',save_best_only=True,mode='min',period=1,verbose=1)
 callback_list = [checkPoint]
