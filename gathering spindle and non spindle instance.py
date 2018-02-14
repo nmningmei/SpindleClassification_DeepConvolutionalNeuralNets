@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 from scipy import stats
 from mne.time_frequency import tfr_multitaper,tfr_morlet
 os.chdir('D:\\NING - spindle\\training set\\') # change working directory
-saving_dir='D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\'
+saving_dir='D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\'
 if not os.path.exists(saving_dir):
     os.mkdir(saving_dir)
 annotations = [f for f in os.listdir() if ('annotations.txt' in f)] # get all the possible annotation files
@@ -43,7 +43,7 @@ def get_events(fif,f,channelList = None):
     jitter_spindle_onset = []
     record_jitters_code = []
     for ii,row in spindles.iterrows():
-        for jj,jitter_ in enumerate([-0.5,-0.25,0,0.25,0.5]):
+        for jj,jitter_ in enumerate([-0.2,-0.1,0,0.1,0.2]):
             record_jitters.append(jitter_)
             record_jitters_code.append(jj)
             jitter_onset = row['Onset'] + jitter_

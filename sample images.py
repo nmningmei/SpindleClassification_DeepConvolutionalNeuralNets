@@ -19,8 +19,8 @@ import re
 
 os.chdir('D:/Ning - spindle/training set')
 
-working_dir='D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\'
-saving_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\sample images\\'
+working_dir='D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\'
+saving_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\sample images\\'
 if not os.path.exists(saving_dir):
     os.mkdir(saving_dir)
 title = {9:'non spindle',0:'spindle',1:'spindle',2:'spindle',3:'spindle',4:'spindle'}
