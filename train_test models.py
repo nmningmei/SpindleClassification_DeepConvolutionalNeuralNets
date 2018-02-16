@@ -31,15 +31,15 @@ from keras.callbacks import ModelCheckpoint
 
 os.chdir('D:/Ning - spindle/training set')
 
-working_dir='D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018'
-saving_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\saving'
+working_dir='D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018'
+saving_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\saving'
 
 # directories for saving trained models, uncomment the one I want
 #saving_dir_weight = 'D:\\NING - spindle\\Spindle_by_Graphical_Features\\classification 1 (add random inputs)\\'
 #saving_dir_weight = 'D:\\NING - spindle\\Spindle_by_Graphical_Features\\shallow\\'
 #saving_dir_weight = 'D:\\NING - spindle\\Spindle_by_Graphical_Features\\shallow_mixed\\'
 #saving_dir_weight = 'D:\\NING - spindle\\Spindle_by_Graphical_Features\\inverse\\'
-saving_dir_weight = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\trained models\\'
+saving_dir_weight = 'D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\trained models\\'
 # make the directories if not exist
 if not os.path.exists(saving_dir):
     os.mkdir(saving_dir)
@@ -47,7 +47,7 @@ if not os.path.exists(saving_dir_weight):
     os.mkdir(saving_dir_weight)
 
 # load validation data
-validation_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\validation\\'
+validation_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\validation\\'
 group = glob(os.path.join(validation_dir,'*.p'))
 temp = [pickle.load(open(f,'rb')) for f in group]
 X_validation = [a for a,b in temp]
@@ -60,7 +60,7 @@ y_validation = [b for a,b in temp]
 y_validation = np.array(y_validation)
 y_validation = np_utils.to_categorical(y_validation,2)
 # training directory
-training_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\training\\'
+training_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\training\\'
 
 #########################################################
 ############## covn autoencoder model ###################
