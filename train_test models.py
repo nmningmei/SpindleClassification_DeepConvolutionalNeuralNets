@@ -52,9 +52,9 @@ group = glob(os.path.join(validation_dir,'*.p'))
 temp = [pickle.load(open(f,'rb')) for f in group]
 X_validation = [a for a,b in temp]
 X_validation = np.array(X_validation)
-X_validation_max = X_validation.max(0)
-X_validation_min = X_validation.min(0)
-X_validation = (X_validation - X_validation_min) / (X_validation_max - X_validation_min)
+#X_validation_max = X_validation.max(0)
+#X_validation_min = X_validation.min(0)
+#X_validation = (X_validation - X_validation_min) / (X_validation_max - X_validation_min)
 
 y_validation = [b for a,b in temp]
 y_validation = np.array(y_validation)
@@ -142,19 +142,21 @@ if os.path.exists(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(con
 for ii in range(breaks):
     labels = []
     all_objects = glob(os.path.join(training_dir,'*.p'))
-    shuffle(all_objects)
+    for aaa in range(50):
+        shuffle(all_objects)
     groups = np.array_split(all_objects,15)
     for jj in range(through):# going through the training data 5 times
 #        step_idx = np.random.choice(np.arange(10),size=10,replace=False)
-        for group in groups[np.random.choice(len(groups),size=len(groups),replace=False)]: # going through 10 splitted training data
+        for step_idx in np.random.choice(len(groups),size=len(groups),replace=False): # going through 15 splitted training data
+            group = groups[step_idx]
             temp = [pickle.load(open(f,'rb')) for f in group]
             print('load training instances')
             X_train_ = [a for a,b in temp]
             X_train_ = np.array(X_train_,dtype=np.float32)
             X_train_max = X_train_.max(0)
             X_train_min = X_train_.min(0)
-            print('nomalizing')
-            X_train_ = (X_train_ - X_train_min) / (X_train_max - X_train_min)
+#            print('nomalizing')
+#            X_train_ = (X_train_ - X_train_min) / (X_train_max - X_train_min)
             y_train_ = [b for a,b in temp]
             y_train_ = np.array(y_train_,dtype=np.float32)
             y_train_ = np_utils.to_categorical(y_train_,2)
@@ -162,7 +164,7 @@ for ii in range(breaks):
         	  # add random inputs because the previous model score random inputs as spindles with super high confidence
         	  # however, we never test/validate the model with any random inputs
             random_inputs = np.random.rand(X_train_.shape[0],32,16,192)
-            random_labels = [0]*X_train_.shape[0]
+            random_labels = [0]*int(X_train_.shape[0]/4)
             random_labels = np_utils.to_categorical(random_labels,2)
             X_train_ = np.concatenate([X_train_,random_inputs],axis=0)
             y_train_ = np.concatenate([y_train_,random_labels],axis=0)

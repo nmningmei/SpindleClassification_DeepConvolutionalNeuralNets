@@ -20,8 +20,8 @@ import re
 
 os.chdir('D:/Ning - spindle/training set')
 
-working_dir='D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\'
-saving_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\total data\\'
+working_dir='D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\'
+saving_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\total data\\'
 if not os.path.exists(saving_dir):
     os.mkdir(saving_dir)
 title = {9:'non spindle',0:'spindle',1:'spindle',2:'spindle',3:'spindle',4:'spindle'}
@@ -33,6 +33,10 @@ for e in os.listdir(working_dir):
         tfcs = tfcs[0]
         #print(e,tfcs.info['event'].values[:,-2].mean(),len(tfcs.info['event'].values[:,-2]),)
         data = tfcs.data
+        # normalize within subjects: this is debatable a controversial step because I am not sure if this is a good step. 
+        # normalize within subjects will throw away intensity information of the EEG recordings but will magnify "pattern" information
+        # 
+        data = (data - data.min()) / (data.max() - data.min())
         ch_names = tfcs.info['ch_names']
         events = tfcs.info['event']
         labels = np.array(events.c.values != 9).astype(int)

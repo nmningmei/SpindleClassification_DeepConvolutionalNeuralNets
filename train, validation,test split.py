@@ -11,10 +11,10 @@ import pickle
 from collections import Counter
 from tqdm import tqdm
 
-working_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\total data\\'
-training_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\training\\'
-validation_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\validation\\'
-testing_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\test\\'
+working_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\total data\\'
+training_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\training\\'
+validation_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\validation\\'
+testing_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\test\\'
 
 for name in [training_dir,validation_dir,testing_dir]:
     if not os.path.exists(name):
