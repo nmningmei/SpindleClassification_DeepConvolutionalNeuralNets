@@ -144,7 +144,7 @@ for ii in range(breaks):
     all_objects = glob(os.path.join(training_dir,'*.p'))
     for aaa in range(50):
         shuffle(all_objects)
-    groups = np.array_split(all_objects,15)
+    groups = np.array_split(all_objects,20)
     for jj in range(through):# going through the training data 5 times
 #        step_idx = np.random.choice(np.arange(10),size=10,replace=False)
         for step_idx in np.random.choice(len(groups),size=len(groups),replace=False): # going through 15 splitted training data
