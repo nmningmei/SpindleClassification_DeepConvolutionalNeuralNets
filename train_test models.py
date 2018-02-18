@@ -163,7 +163,7 @@ for ii in range(breaks):
             print('add random inputs')
         	  # add random inputs because the previous model score random inputs as spindles with super high confidence
         	  # however, we never test/validate the model with any random inputs
-            random_inputs = np.random.rand(X_train_.shape[0],32,16,192)
+            random_inputs = np.random.rand(int(X_train_.shape[0]/4),32,16,192)
             random_labels = [0]*int(X_train_.shape[0]/4)
             random_labels = np_utils.to_categorical(random_labels,2)
             X_train_ = np.concatenate([X_train_,random_inputs],axis=0)
