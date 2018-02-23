@@ -35,8 +35,8 @@ for e in os.listdir(working_dir):
         data = tfcs.data
         # normalize within subjects: this is debatable a controversial step because I am not sure if this is a good step. 
         # normalize within subjects will throw away intensity information of the EEG recordings but will magnify "pattern" information
-        # 
-        data = (data - data.min()) / (data.max() - data.min())
+        # note_2/21/2018: normalizing within the subject seems to slow down the training. I don't have time to experiment this
+#        data = (data - data.min()) / (data.max() - data.min())
         ch_names = tfcs.info['ch_names']
         events = tfcs.info['event']
         labels = np.array(events.c.values != 9).astype(int)

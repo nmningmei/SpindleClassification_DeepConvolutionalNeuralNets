@@ -52,9 +52,9 @@ group = glob(os.path.join(validation_dir,'*.p'))
 temp = [pickle.load(open(f,'rb')) for f in group]
 X_validation = [a for a,b in temp]
 X_validation = np.array(X_validation)
-#X_validation_max = X_validation.max(0)
-#X_validation_min = X_validation.min(0)
-#X_validation = (X_validation - X_validation_min) / (X_validation_max - X_validation_min)
+X_validation_max = X_validation.max(0)
+X_validation_min = X_validation.min(0)
+X_validation = (X_validation - X_validation_min) / (X_validation_max - X_validation_min)
 
 y_validation = [b for a,b in temp]
 y_validation = np.array(y_validation)
@@ -137,31 +137,32 @@ callback_list = [checkPoint]
 temp_results = [] # temporary results saving list, will convert to pandas dat frame
 if os.path.exists(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_)):# if the model is trained, load the trained model
     model_auto.load_weights(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_))
-
+counts = 1
 #### training and validating ########
 for ii in range(breaks):
-    labels = []
+    
     all_objects = glob(os.path.join(training_dir,'*.p'))
     for aaa in range(50):
         shuffle(all_objects)
-    groups = np.array_split(all_objects,20)
+    groups = np.array_split(all_objects,15)
     for jj in range(through):# going through the training data 5 times
 #        step_idx = np.random.choice(np.arange(10),size=10,replace=False)
+        labels = []
         for step_idx in np.random.choice(len(groups),size=len(groups),replace=False): # going through 15 splitted training data
             group = groups[step_idx]
             temp = [pickle.load(open(f,'rb')) for f in group]
             print('load training instances')
             X_train_ = [a for a,b in temp]
-            X_train_ = np.array(X_train_,dtype=np.float32)
+            X_train_ = np.array(X_train_,dtype=np.float32)#data type is very important for some reason in tensorflow
             X_train_max = X_train_.max(0)
             X_train_min = X_train_.min(0)
-#            print('nomalizing')
-#            X_train_ = (X_train_ - X_train_min) / (X_train_max - X_train_min)
+            print('nomalizing')
+            X_train_ = (X_train_ - X_train_min) / (X_train_max - X_train_min)
             y_train_ = [b for a,b in temp]
             y_train_ = np.array(y_train_,dtype=np.float32)
             y_train_ = np_utils.to_categorical(y_train_,2)
             print('add random inputs')
-        	  # add random inputs because the previous model score random inputs as spindles with super high confidence
+        	  # add random inputs because the previous model scores random inputs as spindles with super high confidence
         	  # however, we never test/validate the model with any random inputs
             random_inputs = np.random.rand(int(X_train_.shape[0]/4),32,16,192)
             random_labels = [0]*int(X_train_.shape[0]/4)
@@ -175,38 +176,38 @@ for ii in range(breaks):
             if os.path.exists(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_)):# if the model is trained, load the trained model
                 model_auto.load_weights(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_))
 
-    labels = np.concatenate(labels,axis=0)
-    # load the best state to determine the hyperparameters: stopping point ---- testing data is left untouched
-    model_auto.load_weights(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_))
-    X_predict = model_auto.predict(X_validation)[:,-1] > np.mean(labels[:,-1]) # no at 0.5 level
-    X_predict_prob = model_auto.predict(X_validation)[:,-1]
-    print(metrics.classification_report(y_validation[:,-1],X_predict))
-    # AUC scores, sensitivity, and selectivity (precision and recall)
-    AUC = metrics.roc_auc_score(y_validation[:,-1], X_predict_prob)
-    fpr,tpr,th = metrics.roc_curve(y_validation[:,-1], X_predict_prob,pos_label=1)
-    sensitivity = metrics.precision_score(y_validation[:,-1],X_predict,average='weighted')
-    selectivity = metrics.recall_score(y_validation[:,-1],X_predict,average='weighted')
-    plt.close('all')
-    fig,ax = plt.subplots(figsize=(8,8))
-    ax.plot(fpr,tpr,label='AUC = %.3f'%(AUC))
-    ax.set(xlabel='false postive rate',ylabel='true positive rate',title='%dth 5 epochs'%(ii+1),
-           xlim=(0,1),ylim=(0,1))
-    ax.legend(loc='best')
-    fig.savefig(saving_dir_weight + 'AUC plot_%d.png'%(ii+1),dpi=400)
-    plt.close('all')
-#    validation_measure = [cos_similarity(a,b) for a,b in zip(X_validation, X_predict)]
-#    print('mean similarity: %.4f +/- %.4f'%(np.mean(validation_measure),np.std(validation_measure)))
-    temp_results.append([(ii+1)*50,AUC,sensitivity,selectivity])
-    results_for_saving = pd.DataFrame(np.array(temp_results).reshape(-1,4),columns=['epochs','AUC','sensitivity','selectivity'])
-    if os.path.exists(saving_dir_weight + 'scores_classification_%s.csv'%conditions_):
-        temp_result_for_saving = pd.read_csv(saving_dir_weight + 'scores_classification_%s.csv'%conditions_)
-        results_for_saving = pd.concat([temp_result_for_saving,results_for_saving])
-    results_for_saving.to_csv(saving_dir_weight + 'scores_classification_%s.csv'%conditions_,index=False)
-
+        labels = np.concatenate(labels,axis=0)
+        # load the best state to determine the hyperparameters: stopping point ---- testing data is left untouched
+        model_auto.load_weights(saving_dir_weight+'weights.2D_classification%s.best.hdf5'%(conditions_))
+        X_predict = model_auto.predict(X_validation)[:,-1] > 0.5
+        X_predict_prob = model_auto.predict(X_validation)[:,-1]
+        print(metrics.classification_report(y_validation[:,-1],X_predict))
+        # AUC scores, sensitivity, and selectivity (precision and recall)
+        AUC = metrics.roc_auc_score(y_validation[:,-1], X_predict_prob)
+        fpr,tpr,th = metrics.roc_curve(y_validation[:,-1], X_predict_prob,pos_label=1)
+        sensitivity = metrics.precision_score(y_validation[:,-1],X_predict,average='weighted')
+        selectivity = metrics.recall_score(y_validation[:,-1],X_predict,average='weighted')
+        plt.close('all')
+        fig,ax = plt.subplots(figsize=(8,8))
+        ax.plot(fpr,tpr,label='AUC = %.3f'%(AUC))
+        ax.set(xlabel='false postive rate',ylabel='true positive rate',title='%dth 5 epochs'%(counts),
+               xlim=(0,1),ylim=(0,1))
+        ax.legend(loc='best')
+        fig.savefig(saving_dir_weight + 'AUC plot_%d.png'%(counts),dpi=400)
+        plt.close('all')
+#        validation_measure = [cos_similarity(a,b) for a,b in zip(X_validation, X_predict)]
+#        print('mean similarity: %.4f +/- %.4f'%(np.mean(validation_measure),np.std(validation_measure)))
+        temp_results.append([(counts),AUC,sensitivity,selectivity])
+        results_for_saving = pd.DataFrame(np.array(temp_results).reshape(-1,4),columns=['epochs','AUC','sensitivity','selectivity'])
+        if os.path.exists(saving_dir_weight + 'scores_classification_%s.csv'%conditions_):
+            temp_result_for_saving = pd.read_csv(saving_dir_weight + 'scores_classification_%s.csv'%conditions_)
+            results_for_saving = pd.concat([temp_result_for_saving,results_for_saving])
+        results_for_saving.to_csv(saving_dir_weight + 'scores_classification_%s.csv'%conditions_,index=False)
+        counts += 1
 
 
 ### testing #####
-test_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_1_15_2018\\test'
+test_dir = 'D:\\NING - spindle\\DCNN data\\eventRelated_2_14_2018\\test'
 group = glob(os.path.join(test_dir,'*.p'))
 shuffle(group)
 X_predict_prob_ = []

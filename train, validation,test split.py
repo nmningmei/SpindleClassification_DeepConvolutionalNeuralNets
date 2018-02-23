@@ -31,7 +31,8 @@ np.random.seed(12345)
 testing_data_name = []
 testing_labels=[]
 sampling_type = 0
-for iiii in tqdm(range(int(1e15))):
+print('picking')
+for iiii in tqdm(range(int(1e15)),desc='test set picking'):
     if len(testing_data_name) >= test_size:
         break
     else:
@@ -56,7 +57,7 @@ for iiii in tqdm(range(int(1e15))):
 validation_data_name = []
 validation_labels = []
 sampling_type = 0
-for iiii in tqdm(range(int(1e15))):
+for iiii in tqdm(range(int(1e15)),desc='validation set picking'):
     if len(validation_data_name) >= validation_size:
         break
     else:
@@ -79,8 +80,9 @@ for iiii in tqdm(range(int(1e15))):
 for a in validation_data_name:
     if a in testing_data_name:
         print(a)
-        
+print('check no overlaps')      
 """training set"""
+print('picking training sets')
 training_data_name = []
 for sample in total_files:
     if (sample not in testing_data_name) and (sample not in validation_data_name):
@@ -100,7 +102,7 @@ import shutil
 cases = [training_data_name,testing_data_name,validation_data_name]
 directories = [training_dir,testing_dir,validation_dir]
 
-
+print('moving things around')
 for case,directory in zip(cases,directories):
     for sample in tqdm(case,desc='%s'%directory):
         shutil.copy2(working_dir+sample,directory)
