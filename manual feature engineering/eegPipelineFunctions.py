@@ -737,6 +737,9 @@ def visualize_auc_precision_recall(feature_dictionary,keys,subtitle='',clf_=None
     return fig
 from collections import Counter
 def cross_validation_report(empty_dictionary, pause_time,clf_='logistic',cv=None,kernel='rbf',file_dir=None,compute='signal',n_estimators=5,bag=False):
+    """
+    
+    """
     empty_dictionary={'subject':[],'day':[],'epoch_length':[],
                       'auc_score_mean':[],'auc_score_std':[],
                       'fpr':[],'tpr':[],
