@@ -27,7 +27,7 @@ if not os.path.exists(saving_dir):
 # get the labels first because we need to do some other preprocessing before 
 # we put all the data together    
 labels = []
-for e in glob(os.path.join(working_dir,'*-epo.fif'))[:5]:
+for e in glob(os.path.join(working_dir,'*-epo.fif')):
     temp_epochs = mne.read_epochs(e,preload=False)
     labels.append(temp_epochs.events[:,-1])
     # save memory
@@ -56,7 +56,7 @@ def make_clf(pattern=False,vectorized=False):
 # get the data
 # sacale the data to (0,1)
 data = []
-for tf in glob(os.path.join(working_dir,'*-tfr.h5'))[:5]:
+for tf in glob(os.path.join(working_dir,'*-tfr.h5')):
     tfcs = mne.time_frequency.read_tfrs(tf)[0]
     data_ = tfcs.data
     # define a (0,1) scaler
