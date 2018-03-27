@@ -16,6 +16,28 @@ from matplotlib import pyplot as plt
 import os
 import mne
 from glob import glob
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.svm import SVC
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import StratifiedShuffleSplit,cross_val_score
+from sklearn import metrics
+from mne.decoding import Vectorizer,SlidingEstimator,cross_val_multiscore,LinearModel,get_coef
+from sklearn import utils
+from tqdm import tqdm
+
+def make_clf(pattern=False,vectorized=False):
+    clf = []
+    if vectorized:
+        clf.append(('vectorizer',Vectorizer()))
+    clf.append(('scaler',MinMaxScaler()))
+    # use linear SVM as the estimator
+    estimator = SVC(max_iter=-1,kernel='linear',random_state=12345,class_weight='balanced',probability=True)
+    if pattern:
+        estimator = LinearModel(estimator)
+    clf.append(('estimator',estimator))
+    clf = Pipeline(clf)
+    return clf
+
 os.chdir('D:/Ning - spindle/training set')
 # define data working directory and the result saving directory
 working_dir='D:\\NING - spindle\\Spindle_by_Graphical_Features\\eventRelated_12_20_2017\\'
@@ -33,26 +55,7 @@ for e in glob(os.path.join(working_dir,'*-epo.fif')):
     # save memory
     del temp_epochs
 labels = np.concatenate(labels)
-#
-#
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.svm import SVC
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import StratifiedShuffleSplit,cross_val_score
-from sklearn import metrics
-from mne.decoding import Vectorizer,SlidingEstimator,cross_val_multiscore,LinearModel,get_coef
-def make_clf(pattern=False,vectorized=False):
-    clf = []
-    if vectorized:
-        clf.append(('vectorizer',Vectorizer()))
-    clf.append(('scaler',MinMaxScaler()))
-    # use linear SVM as the estimator
-    estimator = SVC(max_iter=-1,kernel='linear',random_state=12345,class_weight='balanced',probability=True)
-    if pattern:
-        estimator = LinearModel(estimator)
-    clf.append(('estimator',estimator))
-    clf = Pipeline(clf)
-    return clf
+
 # get the data
 # sacale the data to (0,1)
 data = []
@@ -74,10 +77,10 @@ for tf in glob(os.path.join(working_dir,'*-tfr.h5')):
 data = np.concatenate(data,axis=0)
 
 # shuffle the order of the feature matrix and the labels
-from sklearn import utils
+
 for _ in range(10):
     data, labels = utils.shuffle(data,labels)
-from tqdm import tqdm
+
 # customized the temporal decoding process
 # define 10-fold cross validation
 cv = StratifiedShuffleSplit(n_splits=10,random_state=12345)
@@ -103,7 +106,7 @@ for time_ in tqdm(range(data.shape[-1]),desc='temporal decoding'):
 coefs = np.array(coefs)
 scores = np.array(scores)  
 
-
+# plot the temporal decoding
 fig,ax=plt.subplots(figsize=(12,6))  
 times = np.linspace(0,3000,192)
 ax.plot(times,scores.mean(1),color='red',label='mean decoding scores')
@@ -116,7 +119,7 @@ info = temp_epochs.info
 coefs = np.swapaxes(coefs,0,-1)
 coefs = np.swapaxes(coefs,0,2)
 coefs = np.swapaxes(coefs,0,1)
-
+# plot the linear decoding patterns
 fig,axes = plt.subplots(nrows=4,ncols=int(32/4),figsize=(20,8))
 for ii,(ax,title) in enumerate(zip(axes.flatten(),info['ch_names'])):
     im = ax.imshow(coefs.mean(0)[ii,:,:],origin='lower',aspect='auto',extent=[0,3000,6,22],
