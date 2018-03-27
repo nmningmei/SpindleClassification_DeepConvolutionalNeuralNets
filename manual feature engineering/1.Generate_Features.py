@@ -3,6 +3,9 @@
 Created on Wed May 17 12:35:28 2017
 
 @author: ning
+
+This script is to generate features that are chosen manually based on the literature. 
+The features were generated according to a given set of epoch length, phase lock value, phase lack index, and coherence values.
 """
 
 #import mne
