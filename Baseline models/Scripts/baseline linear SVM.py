@@ -41,7 +41,7 @@ def make_clf(pattern=False,vectorized=False):
 os.chdir('D:/Ning - spindle/training set')
 # define data working directory and the result saving directory
 working_dir='D:\\NING - spindle\\Spindle_by_Graphical_Features\\eventRelated_12_20_2017\\'
-saving_dir = 'D:\\NING - spindle\\SpindleClassification_DeepConvolutionalNeuralNets\\Baseline models\Results\\'
+saving_dir = 'D:\\NING - spindle\\SpindleClassification_DeepConvolutionalNeuralNets\\Baseline models\Results\\Linear model\\'
 
 if not os.path.exists(saving_dir):
     os.mkdir(saving_dir)
@@ -105,28 +105,53 @@ for time_ in tqdm(range(data.shape[-1]),desc='temporal decoding'):
     scores.append(scores_)
 coefs = np.array(coefs)
 scores = np.array(scores)  
-
+# get info object to plot the "pattern"
+temp_epochs = mne.read_epochs(working_dir+'sub5_d2-eventsRelated-epo.fif')
+info = temp_epochs.info
+import pickle
+pickle.dump([scores,info,coefs],open(saving_dir+'score_info_coefs.p','wb'))
+scores,info,coefs = pickle.load(open(saving_dir+'score_info_coefs.p','rb'))
+font = {
+        'weight' : 'bold',
+        'size'   : 18}
+import matplotlib
+matplotlib.rc('font', **font)
 # plot the temporal decoding
 fig,ax=plt.subplots(figsize=(12,6))  
 times = np.linspace(0,3000,192)
-ax.plot(times,scores.mean(1),color='red',label='mean decoding scores')
-ax.fill_between(times,scores.mean(1)-scores.std(1),scores.mean(1)+scores.std(1),color='red',alpha=0.4)
-ax.set(xlabel='Time (ms)',ylabel='AUC ROC',title='Decoding results',xlim=(0,3000),ylim=(0.5,1.))
-fig.savefig(saving_dir+'decoding results.png',dpi=300)
-temp_epochs = mne.read_epochs(working_dir+'sub5_d2-eventsRelated-epo.fif')
-info = temp_epochs.info
+ax.plot(times,scores.mean(1),color='black',alpha=1.,label='Decoding Scores (Mean ROC AUC)')
+ax.fill_between(times,scores.mean(1)-scores.std(1)/np.sqrt(10),scores.mean(1)+scores.std(1)/np.sqrt(10),
+                color='red',alpha=0.4,label='Decoding Scores (SE ROC AUC)')
+ax.axvline(500,linestyle='--',color='black',label='Sleep Spindle Marked Onset')
+ax.set(xlabel='Time (ms)',ylabel='AUC ROC',title='Decoding Results\nLinear SVM, 10-fold\nSleep Spindle (N=3372) vs Non-Spindle (N=3368)',
+       xlim=(0,3000),ylim=(0.5,1.))
+ax.legend()
+fig.savefig(saving_dir+'decoding results.png',dpi=400,bbox_inches='tight')
+
 
 coefs = np.swapaxes(coefs,0,-1)
 coefs = np.swapaxes(coefs,0,2)
 coefs = np.swapaxes(coefs,0,1)
 # plot the linear decoding patterns
-fig,axes = plt.subplots(nrows=4,ncols=int(32/4),figsize=(20,8))
+fig,axes = plt.subplots(nrows=4,ncols=int(32/4),figsize=(20,8),squeeze=False)
 for ii,(ax,title) in enumerate(zip(axes.flatten(),info['ch_names'])):
     im = ax.imshow(coefs.mean(0)[ii,:,:],origin='lower',aspect='auto',extent=[0,3000,6,22],
-                   vmin=0,)
+                   vmin=0,vmax=.25)
+#    ax.scatter(10,20,label=title)
+    if (ii == 0) or (ii == 8) or (ii == 16) :
+        ax.set(xticks=[],ylabel='Frequency')
+    elif ii == 24:
+        ax.set(xlabel='Time',ylabel='Frequency')
+    elif (ii == np.arange(25,32)).any():
+        ax.set(yticks=[],xlabel='Time')
+    else:
+        ax.set(xticks=[],yticks=[])
+#    ax.legend()
     ax.set(title=title)
-fig.tight_layout()
-fig.savefig(saving_dir+'decoding patterns.png',dpi=300)
+fig.subplots_adjust(bottom=.1,top=.86,left=.1,right=.8,wspace=.02,hspace=.3)
+cb_ax=fig.add_axes([.83,.1,.02,.8])
+cbar = fig.colorbar(im,cax=cb_ax)
+fig.savefig(saving_dir+'decoding patterns.png',dpi=500,bbox_inches='tight')
 
 
 

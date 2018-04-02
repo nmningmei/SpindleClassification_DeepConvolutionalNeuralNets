@@ -13,23 +13,26 @@ This script is to do two things,
 from mne.decoding import Vectorizer
 import os
 import pickle
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.utils import shuffle
 import numpy as np
-from sklearn import metrics
+from sklearn import metrics,utils
 from keras.utils import np_utils
 import matplotlib.pyplot as plt
-from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
-import pandas as pd
-from scipy import stats as stats
-from scipy.stats import randint as sp_randint
+import mne
+from sklearn.preprocessing import MinMaxScaler
+from glob import glob
+from tqdm import tqdm
+#from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
+#import pandas as pd
+#from scipy import stats as stats
+#from scipy.stats import randint as sp_randint
 
 os.chdir('D:\\NING - spindle\\Spindle_by_Graphical_Features')
 # define data working directory and the result saving directory
 working_dir='D:\\NING - spindle\\Spindle_by_Graphical_Features\\eventRelated_12_20_2017\\'
-saving_dir = 'D:\\NING - spindle\\SpindleClassification_DeepConvolutionalNeuralNets\\Baseline models\Results\\'
+saving_dir = 'D:\\NING - spindle\\SpindleClassification_DeepConvolutionalNeuralNets\\Baseline models\Results\\Non-Linear model\\'
 """
 # this part of the code is commented out because i don't want to run it again to optimize the hyperparameters of the randomforest classifier
 #
@@ -96,6 +99,11 @@ temp_ = pd.concat(temp_)
 C = temp_[temp_.columns[2:]].apply(pd.to_numeric)
 C.mode()
 """
+font = {
+        'weight' : 'bold',
+        'size'   : 18}
+import matplotlib
+matplotlib.rc('font', **font)
 def make_clf():
     clf = []
     clf.append(('vectorizer',Vectorizer()))
@@ -109,32 +117,116 @@ def make_clf():
                                                   min_samples_split=4)))# minimum feature split
     clf = Pipeline(clf)
     return clf
-X_validation,y_validation = pickle.load(open('data/validation/validation.p','rb'))
-X_test,y_test = pickle.load(open('data/test//test.p','rb'))
-for ii in range(5):# more or less a 5-fold cross validation
+
+# we don't get the data and labels simultaneously
+# get the labels first because we need to do some other preprocessing before 
+# we put all the data together    
+labels = []
+for e in glob(os.path.join(working_dir,'*-epo.fif')):
+    temp_epochs = mne.read_epochs(e,preload=False)
+    labels.append(temp_epochs.events[:,-1])
+    # save memory
+    del temp_epochs
+labels = np.concatenate(labels)
+
+# get the data
+# sacale the data to (0,1)
+data = []
+for tf in glob(os.path.join(working_dir,'*-tfr.h5')):
+    tfcs = mne.time_frequency.read_tfrs(tf)[0]
+    data_ = tfcs.data
+    # define a (0,1) scaler
+    scaler = MinMaxScaler(feature_range=(0,1))
+    # define a vectorizer so we can transform the data from 3D to 2D
+    vectorizer = Vectorizer()
+    data_vec = vectorizer.fit_transform(data_)
+    data_scaled = scaler.fit_transform(data_vec)
+    # after we scale the data to (0,1), we transform the data from 2D back to 3D
+    data_scaled = vectorizer.inverse_transform(data_scaled)
+    del tfcs
+    del data_, data_vec
+    data.append(data_scaled)
+    del data_scaled
+data = np.concatenate(data,axis=0)
+
+# shuffle the order of the feature matrix and the labels
+for _ in range(10):
+    data, labels = utils.shuffle(data,labels)
+    
+# non-linear temporal decoding
+cv = StratifiedShuffleSplit(n_splits=10,random_state=12345)
+scores = []
+for time_ in tqdm(range(data.shape[-1]),desc='temporal decoding'):
+    scores_=[]
+    # at each time point, we use the frequency information in each channel as the features
+    for train,test in cv.split(data,labels):
+        data_ = data[train,:,:,time_]
+        clf = make_clf()
+        clf.fit(data_,labels[train])
+        temp = metrics.roc_auc_score(labels[test],clf.predict_proba(data[test,:,:,time_])[:,-1])
+        scores_.append(temp)
+    print('\n','%d'%time_,'auc = ',np.mean(scores_),'\n')    
+    scores.append(scores_)
+scores = np.array(scores,dtype=np.float32)      
+
+# plot the temporal decoding
+fig,ax=plt.subplots(figsize=(12,6))  
+times = np.linspace(0,3000,192)
+ax.plot(times,scores.mean(1),color='black',alpha=1.,label='Decoding Scores (Mean ROC AUC)')
+ax.fill_between(times,scores.mean(1)-scores.std(1)/np.sqrt(10),scores.mean(1)+scores.std(1)/np.sqrt(10),
+                color='red',alpha=0.4,label='Decoding Scores (SE ROC AUC)')
+ax.axvline(500,linestyle='--',color='black',label='Sleep Spindle Marked Onset')
+ax.set(xlabel='Time (ms)',ylabel='AUC ROC',title='Decoding Results\nRandom Forest, 10-fold\nSleep Spindle (N=3372) vs Non-Spindle (N=3368)',
+       xlim=(0,3000),ylim=(0.5,1.))
+ax.legend()
+fig.savefig(saving_dir+'decoding results.png',dpi=400,bbox_inches='tight')
+
+# compare linear and non linear
+scores_RF = scores
+linear_dir = 'D:\\NING - spindle\\SpindleClassification_DeepConvolutionalNeuralNets\\Baseline models\Results\\Linear model\\'
+scores_SVM,_,_ = pickle.load(open(linear_dir+'score_info_coefs.p','rb'))
+
+fig,ax = plt.subplots(figsize=(12,8))
+times = np.linspace(0,3000,scores.shape[0])
+ax.plot(times,scores_RF.mean(1),color='black',alpha=1.,label='Mean Decoding Scores (RandomForest)')
+ax.plot(times,scores_SVM.mean(1),color='black',linestyle='--',alpha=1.,label='Mean Decoding Scores (SVM)')
+ax.fill_between(times,
+               scores_RF.mean(1)-scores_RF.std(1)/np.sqrt(10),
+               scores_RF.mean(1)+scores_RF.std(1)/np.sqrt(10),
+               color='red',alpha=.4,label='Decoding Scores (SE)')
+ax.fill_between(times,
+               scores_SVM.mean(1)-scores_SVM.std(1)/np.sqrt(10),
+               scores_SVM.mean(1)+scores_SVM.std(1)/np.sqrt(10),
+               color='red',alpha=.4)
+ax.axvline(500,linestyle='--',color='blue',label='Sleep Spindle Marked Onset')
+ax.legend()
+ax.set(xlim=(0,3000),ylim=(0.5,1.),xlabel='Time (ms)',ylabel='AUC ROC',
+       title='Decoding Results\nRandom Forest vs Linear SVM, 10-fold\nSleep Spindle (N=3372) vs Non-Spindle (N=3368)')
+fig.savefig(saving_dir+'linear vs non linear.png',dpi=600,bbox_inches='tight')
+
+
+
+
+
+AUC,fpr,tpr,sensitivity,selectivity = [],[],[],[],[]
+for train,test in cv.split(data,labels):
+    X = data[train]
+    y = labels[train]
+    X_ = data[test]
+    y_ = labels[test]
     clf = make_clf()
-    for ii in np.random.choice(range(10),10,replace=False):# within each fold, the order of feeding the training data is randomized
-        X_train_,y_train_ = pickle.load(open('data/train/train%d.p'%(ii),'rb'))
-        random_inputs = np.random.rand(X_train_.shape[0],32,16,192)
-        random_labels = [0]*X_train_.shape[0]
-        random_labels = np_utils.to_categorical(random_labels,2)
-        X_train_ = np.concatenate([X_train_,random_inputs],axis=0)
-        y_train_ = np.concatenate([y_train_,random_labels],axis=0)
-        clf.fit(X_train_,y_train_)
-        pred_ = clf.predict(X_validation)
-    print(metrics.classification_report(y_validation,pred_))
-X_predict_prob_ = clf.predict_proba(X_test)[1][:,-1]
-X_predict_ = X_predict_prob_ > 0.5 # just for thresholding
-print(metrics.classification_report(y_test[:,-1],X_predict_))# classification measurement on the test data
-AUC = metrics.roc_auc_score(y_test[:,-1], X_predict_prob_)
-# get the step function of false positive rate as a function of true positive rate
-fpr,tpr,th = metrics.roc_curve(y_test[:,-1], X_predict_prob_,pos_label=1)
-# average sensitivity and selectivity
-sensitivity = metrics.precision_score(y_test[:,-1],X_predict_,average='weighted')
-selectivity = metrics.recall_score(y_test[:,-1],X_predict_,average='weighted')
-plt.close('all') # plot the roc curve
-fig,ax = plt.subplots(figsize=(8,8))
-ax.plot(fpr,tpr,label='AUC = %.3f\nSensitivity = %.3f\nSelectivity = %.3f'%(AUC,sensitivity,selectivity))
-ax.set(xlabel='false postive rate',ylabel='true positive rate',title='test data\nrandom forest',
-       xlim=(0,1),ylim=(0,1))
-ax.legend(loc='best')
+    clf.fit(X,y)
+    pred = clf.predict(X_)
+    print(metrics.classification_report(y_,pred))
+    X_predict_prob_ = clf.predict_proba(X_)[1][:,-1]
+    # metics
+    AUC_temp = metrics.roc_auc_score(y_, X_predict_prob_)
+    AUC.append(AUC_temp)
+    # get the step function of false positive rate as a function of true positive rate
+    fpr_temp,tpr_temp,th = metrics.roc_curve(y_, X_predict_prob_,pos_label=1)
+    fpr.append(fpr_temp);tpr.append(tpr_temp)
+    # average sensitivity and selectivity
+    sensitivity_temp = metrics.precision_score(y_,pred,average='weighted')
+    selectivity_temp = metrics.recall_score(y_,pred,average='weighted')
+    sensitivity.append(sensitivity_temp);selectivity.append(selectivity_temp)
+
