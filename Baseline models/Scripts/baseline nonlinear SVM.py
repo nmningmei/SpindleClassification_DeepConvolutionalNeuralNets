@@ -18,7 +18,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 import numpy as np
 from sklearn import metrics,utils
-from keras.utils import np_utils
 import matplotlib.pyplot as plt
 import mne
 from sklearn.preprocessing import MinMaxScaler
@@ -168,7 +167,7 @@ for time_ in tqdm(range(data.shape[-1]),desc='temporal decoding'):
     print('\n','%d'%time_,'auc = ',np.mean(scores_),'\n')    
     scores.append(scores_)
 scores = np.array(scores,dtype=np.float32)      
-
+pickle.dump(scores,open(saving_dir+'RF scores.p','wb'))
 # plot the temporal decoding
 fig,ax=plt.subplots(figsize=(12,6))  
 times = np.linspace(0,3000,192)
@@ -204,11 +203,9 @@ ax.set(xlim=(0,3000),ylim=(0.5,1.),xlabel='Time (ms)',ylabel='AUC ROC',
        title='Decoding Results\nRandom Forest vs Linear SVM, 10-fold\nSleep Spindle (N=3372) vs Non-Spindle (N=3368)')
 fig.savefig(saving_dir+'linear vs non linear.png',dpi=600,bbox_inches='tight')
 
-
-
-
-
-AUC,fpr,tpr,sensitivity,selectivity = [],[],[],[],[]
+cv = StratifiedShuffleSplit(n_splits=10,random_state=12345)
+# non linear whole window classification
+AUC,fpr,tpr,sensitivity,selectivity,cm = [],[],[],[],[],[]
 for train,test in cv.split(data,labels):
     X = data[train]
     y = labels[train]
@@ -218,7 +215,7 @@ for train,test in cv.split(data,labels):
     clf.fit(X,y)
     pred = clf.predict(X_)
     print(metrics.classification_report(y_,pred))
-    X_predict_prob_ = clf.predict_proba(X_)[1][:,-1]
+    X_predict_prob_ = clf.predict_proba(X_)[:,-1]
     # metics
     AUC_temp = metrics.roc_auc_score(y_, X_predict_prob_)
     AUC.append(AUC_temp)
@@ -229,4 +226,50 @@ for train,test in cv.split(data,labels):
     sensitivity_temp = metrics.precision_score(y_,pred,average='weighted')
     selectivity_temp = metrics.recall_score(y_,pred,average='weighted')
     sensitivity.append(sensitivity_temp);selectivity.append(selectivity_temp)
+    cm_temp = metrics.confusion_matrix(y_,pred)
+    cm_temp = cm_temp.astype('float') / cm_temp.sum(axis=1)[:,np.newaxis]
+    cm.append(cm_temp)
+import pandas as pd
+nonLinear = {'AUC':AUC,'fpr':fpr,'tpr':tpr,'sen':sensitivity,'sel':selectivity,'cm':cm }
+nonLinear = pd.DataFrame(nonLinear)
+nonLinear['model'] = 'Random Forest'
 
+# linear whole window classification
+def make_clf(pattern=False,vectorized=False):
+    clf = []
+    from sklearn.svm import SVC
+    clf.append(('vectorizer',Vectorizer()))
+    # use linear SVM as the estimator
+    estimator = SVC(max_iter=-1,kernel='linear',random_state=12345,class_weight='balanced',probability=True)
+    clf.append(('estimator',estimator))
+    clf = Pipeline(clf)
+    return clf
+AUC,fpr,tpr,sensitivity,selectivity,cm = [],[],[],[],[],[]
+for train,test in cv.split(data,labels):
+    X = data[train]
+    y = labels[train]
+    X_ = data[test]
+    y_ = labels[test]
+    clf = make_clf()
+    clf.fit(X,y)
+    pred = clf.predict(X_)
+    print(metrics.classification_report(y_,pred))
+    X_predict_prob_ = clf.predict_proba(X_)[:,-1]
+    # metics
+    AUC_temp = metrics.roc_auc_score(y_, X_predict_prob_)
+    AUC.append(AUC_temp)
+    # get the step function of false positive rate as a function of true positive rate
+    fpr_temp,tpr_temp,th = metrics.roc_curve(y_, X_predict_prob_,pos_label=1)
+    fpr.append(fpr_temp);tpr.append(tpr_temp)
+    # average sensitivity and selectivity
+    sensitivity_temp = metrics.precision_score(y_,pred,average='weighted')
+    selectivity_temp = metrics.recall_score(y_,pred,average='weighted')
+    sensitivity.append(sensitivity_temp);selectivity.append(selectivity_temp)
+    cm_temp = metrics.confusion_matrix(y_,pred)
+    cm_temp = cm_temp.astype('float') / cm_temp.sum(axis=1)[:,np.newaxis]
+    cm.append(cm_temp)
+Linear = {'AUC':AUC,'fpr':fpr,'tpr':tpr,'sen':sensitivity,'sel':selectivity,'cm':cm }
+Linear = pd.DataFrame(Linear)
+Linear['model'] = 'Linear SVM'
+df_results = pd.concat([nonLinear,Linear])
+df_results.to_csv(saving_dir+'comparison_linear_vs_nonlinear.csv',index=False)
